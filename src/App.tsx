@@ -1,35 +1,48 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useAppStore } from "@/stores/app";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/base/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/base/select";
 
 function App() {
-  const [count, setCount] = useState(0)
-
+  const { language, setLanguage } = useAppStore();
+  const { t } = useTranslation();
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="flex min-h-svh flex-col items-center justify-center">
+      <Button>Click me</Button>
+      <br />
+      <div className="flex items-center space-x-4">
+        {" "}
+        <Select value={language} onValueChange={(value) => setLanguage(value)}>
+          {" "}
+          <SelectTrigger className="w-[180px]">
+            {" "}
+            <SelectValue placeholder="選擇語系" />{" "}
+          </SelectTrigger>{" "}
+          <SelectContent>
+            {" "}
+            <SelectGroup>
+              {" "}
+              <SelectLabel>語系</SelectLabel>{" "}
+              <SelectItem value="zh-Hans">簡體中文</SelectItem>{" "}
+              <SelectItem value="en">English</SelectItem>{" "}
+              <SelectItem value="ko-KR">한국어</SelectItem>{" "}
+              <SelectItem value="ja-JP">日本語</SelectItem>{" "}
+            </SelectGroup>{" "}
+          </SelectContent>{" "}
+        </Select>{" "}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      <br />
+      <h1>{t("hello")}</h1>
+    </div>
+  );
 }
 
-export default App
+export default App;
