@@ -6,6 +6,7 @@
   ],
   "compilerOptions": {
     "types": ["vitest/globals", "@testing-library/jest-dom/vitest"],
+    "strict": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
