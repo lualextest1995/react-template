@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { useRouteStore } from "@/stores/route";
+import { requireAuth } from "@/utils/auth";
 import Layout from "@/layout/TabsLayout";
 import Test from "@/pages/testPage";
 
@@ -20,7 +21,9 @@ function App() {
         id: "test",
         path: "/test",
         title: "測試頁面",
+        layout: Layout,
         component: Test,
+        loader: requireAuth,
       });
     }, 3000);
 
@@ -36,27 +39,32 @@ function App() {
     };
   }, [addRoute, removeRoute]);
 
+  // 創建路由配置
+  const router = React.useMemo(() => {
+    return createBrowserRouter(
+      routes.map((route) => {
+        const Component = route.component;
+        const RouteLayout = route.layout;
+        
+        return {
+          path: route.path,
+          loader: route.loader,
+          element: <RouteLayout />,
+          children: [
+            {
+              index: route.path === "/",
+              path: route.path === "/" ? undefined : "",
+              element: <Component />,
+            },
+          ],
+        };
+      })
+    );
+  }, [routes]);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            {routes.map((route) => {
-              const Component = route.component;
-              if (route.path === "/") {
-                return <Route key={route.id} index element={<Component />} />;
-              }
-              return (
-                <Route
-                  key={route.id}
-                  path={route.path.slice(1)} // 移除開頭的 /
-                  element={<Component />}
-                />
-              );
-            })}
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
       <ReactQueryDevtools />
     </QueryClientProvider>
   );

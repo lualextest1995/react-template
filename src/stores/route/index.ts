@@ -4,12 +4,18 @@ import { HomePage } from "@/pages/HomePage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { LoginPage } from "@/pages/LoginPage";
+import Layout from "@/layout/TabsLayout";
+import Layout1 from "@/layout/LoginLayout";
+import { requireAuth, requireGuest } from "@/utils/auth";
 
 export interface RouteConfig {
   id: string;
   path: string;
   title: string;
+  layout: React.ComponentType;
   component: React.ComponentType;
+  loader?: () => any;
   meta?: Record<string, any>;
 }
 
@@ -27,29 +33,46 @@ const defaultRoutes: RouteConfig[] = [
     id: "home",
     path: "/",
     title: "首頁",
+    layout: Layout,
     component: HomePage,
+    loader: requireAuth,
     meta: { icon: "home" },
   },
   {
     id: "dashboard",
     path: "/dashboard",
     title: "儀表板",
+    layout: Layout,
     component: DashboardPage,
+    loader: requireAuth,
     meta: { icon: "dashboard" },
   },
   {
     id: "users",
     path: "/users",
     title: "用戶管理",
+    layout: Layout,
     component: UsersPage,
+    loader: requireAuth,
     meta: { icon: "users" },
   },
   {
     id: "settings",
     path: "/settings",
     title: "設定",
+    layout: Layout,
     component: SettingsPage,
+    loader: requireAuth,
     meta: { icon: "settings" },
+  },
+  {
+    id: "login",
+    path: "/login",
+    title: "登入",
+    layout: Layout1,
+    component: LoginPage,
+    loader: requireGuest,
+    meta: { icon: "login" },
   },
 ];
 
