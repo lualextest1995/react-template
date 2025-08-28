@@ -1,98 +1,64 @@
-import { useAppStore } from "@/stores/app";
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQueryClient,
-  useQuery,
-  useMutation,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useTranslation } from "react-i18next";
-import { Button } from "@/components/base/button";
-import { fakeGet, fakePost } from "@/apis/global/user";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/base/select";
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useRouteStore } from "@/stores/route";
+import Layout from "@/layout/TabsLayout";
+import Test from "@/pages/testPage";
 
 const queryClient = new QueryClient();
 
 function App() {
-  const { language, setLanguage } = useAppStore();
-  const { t } = useTranslation();
+  const { routes, addRoute, removeRoute } = useRouteStore();
+
+  // 動態路由測試
+  React.useEffect(() => {
+    // 3秒後添加測試頁面路由
+    const addTimer = setTimeout(() => {
+      console.log("添加測試頁面路由");
+      addRoute({
+        id: "test",
+        path: "/test",
+        title: "測試頁面",
+        component: Test,
+      });
+    }, 3000);
+
+    // 15秒後刪除測試頁面路由
+    const removeTimer = setTimeout(() => {
+      console.log("刪除測試頁面路由");
+      removeRoute("test");
+    }, 15000);
+
+    return () => {
+      clearTimeout(addTimer);
+      clearTimeout(removeTimer);
+    };
+  }, [addRoute, removeRoute]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-svh flex-col items-center justify-center">
-        <InnerApp />
-        <br />
-        <div className="flex items-center space-x-4">
-          {" "}
-          <Select
-            value={language}
-            onValueChange={(value) => setLanguage(value)}
-          >
-            {" "}
-            <SelectTrigger className="w-[180px]">
-              {" "}
-              <SelectValue placeholder="選擇語系" />{" "}
-            </SelectTrigger>{" "}
-            <SelectContent>
-              {" "}
-              <SelectGroup>
-                {" "}
-                <SelectLabel>語系</SelectLabel>{" "}
-                <SelectItem value="zh-Hans">簡體中文</SelectItem>{" "}
-                <SelectItem value="en">English</SelectItem>{" "}
-                <SelectItem value="ko-KR">한국어</SelectItem>{" "}
-                <SelectItem value="ja-JP">日本語</SelectItem>{" "}
-              </SelectGroup>{" "}
-            </SelectContent>{" "}
-          </Select>{" "}
-        </div>
-        <br />
-        <h1>{t("hello")}</h1>
-      </div>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            {routes.map((route) => {
+              const Component = route.component;
+              if (route.path === "/") {
+                return <Route key={route.id} index element={<Component />} />;
+              }
+              return (
+                <Route
+                  key={route.id}
+                  path={route.path.slice(1)} // 移除開頭的 /
+                  element={<Component />}
+                />
+              );
+            })}
+          </Route>
+        </Routes>
+      </BrowserRouter>
       <ReactQueryDevtools />
     </QueryClientProvider>
-  );
-}
-
-function InnerApp() {
-  const queryClient = useQueryClient();
-
-  const { data } = useQuery({
-    queryKey: ["fakeGet"],
-    queryFn: () => fakeGet(),
-  });
-
-  const { mutateAsync } = useMutation({
-    mutationFn: () =>
-      fakePost({
-        userId1: "u123",
-        title1: "Post Title",
-        body1: "Post Body",
-        id1: 1,
-      }),
-    onSuccess: (data) => {
-      console.log("Data posted successfully:", data);
-      queryClient.invalidateQueries({ queryKey: ["fakeGet"] });
-    },
-    onError: (error) => {
-      console.error("Error posting data:", error);
-    },
-  });
-
-  return (
-    <>
-      <div>Data: {JSON.stringify(data)}</div>
-      <Button onClick={() => mutateAsync()}>Click me</Button>
-    </>
   );
 }
 
