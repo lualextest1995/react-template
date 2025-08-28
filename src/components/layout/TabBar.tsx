@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { X, MoreHorizontal } from "lucide-react";
-import { useTabsStore } from "../../stores/tabs";
-import { useKeepAliveStore } from "../../stores/keepAlive";
+import { useTabsStore } from "@/stores/tabs";
+import { useKeepAliveStore } from "@/stores/keepAlive";
 import { cn } from "@/utils/shadcn";
 
 interface TabBarProps {
@@ -9,9 +9,20 @@ interface TabBarProps {
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ className }) => {
-  const { tabs, activeId, activate, close, closeOthers, closeAll } =
-    useTabsStore();
+  const {
+    tabs,
+    activeId,
+    activate,
+    close,
+    closeOthers,
+    closeAll,
+    reorderTabs,
+  } = useTabsStore();
   const { remove: removeFromCache } = useKeepAliveStore();
+
+  // 拖拉狀態
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleTabClick = (routeId: string) => {
     activate(routeId);
@@ -46,6 +57,40 @@ export const TabBar: React.FC<TabBarProps> = ({ className }) => {
     }
   };
 
+  // 拖拉事件處理
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    // 設置拖拉圖片（可選）
+    e.dataTransfer.setData("text/plain", "");
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      reorderTabs(draggedIndex, dropIndex);
+    }
+
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
   if (tabs.length === 0) {
     return null;
   }
@@ -57,16 +102,27 @@ export const TabBar: React.FC<TabBarProps> = ({ className }) => {
         className
       )}
     >
-      {tabs.map((tab) => (
+      {tabs.map((tab, index) => (
         <div
           key={tab.id}
           className={cn(
-            "flex items-center px-3 py-2 border-r cursor-pointer group min-w-0 max-w-xs",
+            "flex items-center px-3 py-2 border-r cursor-pointer group min-w-0 max-w-xs relative",
             "hover:bg-muted/50 transition-colors",
             activeId === tab.id
               ? "bg-background border-b-2 border-b-primary text-foreground"
-              : "bg-muted/20 text-muted-foreground"
+              : "bg-muted/20 text-muted-foreground",
+            // 拖拉樣式
+            draggedIndex === index && "opacity-50 scale-95",
+            dragOverIndex === index &&
+              draggedIndex !== index &&
+              "bg-primary/10 border-l-2 border-l-primary"
           )}
+          draggable
+          onDragStart={(e) => handleDragStart(e, index)}
+          onDragOver={(e) => handleDragOver(e, index)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, index)}
+          onDragEnd={handleDragEnd}
           onClick={() => handleTabClick(tab.id)}
           onContextMenu={(e) => handleContextMenu(e, tab.id)}
         >
@@ -79,6 +135,7 @@ export const TabBar: React.FC<TabBarProps> = ({ className }) => {
                 activeId === tab.id && "opacity-100"
               )}
               onClick={(e) => handleTabClose(e, tab.id)}
+              onDragStart={(e) => e.stopPropagation()} // 防止關閉按鈕觸發拖拉
             >
               <X className="h-3 w-3" />
             </button>

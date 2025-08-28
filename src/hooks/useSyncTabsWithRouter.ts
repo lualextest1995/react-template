@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useRouteStore } from "../stores/route";
-import { useTabsStore } from "../stores/tabs";
+import { useRouteStore } from "@/stores/route";
+import { useTabsStore } from "@/stores/tabs";
 
 /**
  * 同步 Tabs 與 Router 的 Hook
@@ -9,13 +9,21 @@ import { useTabsStore } from "../stores/tabs";
  * 功能：
  * 1. 監聽路由變化，自動開啟或更新對應的 tab
  * 2. 監聽 activeTab 變化，自動導航到對應路由
+ * 3. 提供導航功能給 tabs store 使用
  */
 export const useSyncTabsWithRouter = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const { match: matchRoute } = useRouteStore();
-  const { openByRoute, getActiveTab, activeId, lastPathMap } = useTabsStore();
+  const {
+    openByRoute,
+    getActiveTab,
+    activeId,
+    lastPathMap,
+    pendingNavigation,
+    setPendingNavigation,
+  } = useTabsStore();
 
   // 使用 ref 來追蹤操作狀態，避免循環更新
   const syncStateRef = useRef({
@@ -23,6 +31,14 @@ export const useSyncTabsWithRouter = () => {
     lastLocationKey: "",
     lastActiveId: "",
   });
+
+  // 監聽待導航路徑，處理路由被移除後的導航
+  useEffect(() => {
+    if (pendingNavigation) {
+      navigate(pendingNavigation, { replace: true });
+      setPendingNavigation(null); // 清除待導航狀態
+    }
+  }, [pendingNavigation, navigate, setPendingNavigation]);
 
   // 穩定的 openByRoute 回調
   const stableOpenByRoute = useCallback(openByRoute, [openByRoute]);

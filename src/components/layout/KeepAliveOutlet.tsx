@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import { useOutlet, useLocation } from "react-router-dom";
-import { useRouteStore } from "../../stores/route";
-import { useKeepAliveStore } from "../../stores/keepAlive";
-import { useTabsStore } from "../../stores/tabs";
+import { useRouteStore } from "@/stores/route";
+import { useKeepAliveStore } from "@/stores/keepAlive";
+import { useTabsStore } from "@/stores/tabs";
 
 interface KeepAliveOutletProps {
   className?: string;
