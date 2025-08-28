@@ -41,11 +41,12 @@ function App() {
 
   // 創建路由配置
   const router = React.useMemo(() => {
-    return createBrowserRouter(
-      routes.map((route) => {
-        const Component = route.component;
-        const RouteLayout = route.layout;
-        
+    const routeConfigs = routes.map((route) => {
+      const Component = route.component;
+      const RouteLayout = route.layout;
+
+      // 如果有 layout，創建嵌套路由
+      if (RouteLayout) {
         return {
           path: route.path,
           loader: route.loader,
@@ -58,8 +59,17 @@ function App() {
             },
           ],
         };
-      })
-    );
+      }
+
+      // 如果沒有 layout，創建頂層路由
+      return {
+        path: route.path,
+        loader: route.loader,
+        element: <Component />,
+      };
+    });
+
+    return createBrowserRouter(routeConfigs);
   }, [routes]);
 
   return (

@@ -5,6 +5,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { NotFoundPage } from "@/pages/NotFoundPage";
 import Layout from "@/layout/TabsLayout";
 import Layout1 from "@/layout/LoginLayout";
 import { requireAuth, requireGuest } from "@/utils/auth";
@@ -12,8 +13,8 @@ import { requireAuth, requireGuest } from "@/utils/auth";
 export interface RouteConfig {
   id: string;
   path: string;
-  title: string;
-  layout: React.ComponentType;
+  title?: string;
+  layout?: React.ComponentType;
   component: React.ComponentType;
   loader?: () => any;
   meta?: Record<string, any>;
@@ -73,6 +74,11 @@ const defaultRoutes: RouteConfig[] = [
     component: LoginPage,
     loader: requireGuest,
     meta: { icon: "login" },
+  },
+  {
+    id: "notfound",
+    path: "*",
+    component: NotFoundPage,
   },
 ];
 
