@@ -1,5 +1,5 @@
 function TestPage() {
-  return <div>測試頁面</div>;
+    return <div>測試頁面</div>
 }
 
-export default TestPage;
+export default TestPage

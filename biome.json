@@ -1,0 +1,155 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.1.4/schema.json",
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true
+    },
+    "files": {
+        "ignoreUnknown": false,
+        "includes": ["**/*.ts", "**/*.tsx"]
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 100
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true,
+
+            "a11y": {
+                "recommended": true
+            },
+
+            "security": {
+                "recommended": true
+            },
+
+            "complexity": {
+                "noExcessiveCognitiveComplexity": "error",
+                "noExcessiveNestedTestSuites": "error",
+                "noUselessCatch": "error",
+                "noUselessConstructor": "error",
+                "noUselessThisAlias": "error",
+                "useDateNow": { "fix": "safe", "level": "error", "options": {} },
+                "useLiteralKeys": { "fix": "safe", "level": "error", "options": {} },
+                "useOptionalChain": { "fix": "safe", "level": "error", "options": {} }
+            },
+
+            "correctness": {
+                "useIsNan": { "fix": "safe", "level": "error", "options": {} },
+
+                "useHookAtTopLevel": "error",
+                "useExhaustiveDependencies": "error",
+                "useJsxKeyInIterable": "error",
+                "noVoidElementsWithChildren": "error",
+                "noRenderReturnValue": "error"
+            },
+
+            "nursery": {
+                "noMagicNumbers": "off",
+                "useExplicitType": "off",
+
+                "noNestedComponentDefinitions": "error",
+                "useReactFunctionComponents": "error"
+            },
+
+            "performance": {
+                "noDelete": "error",
+                "noNamespaceImport": "off"
+            },
+
+            "style": {
+                "noCommonJs": "error",
+                "noNamespace": "error",
+                "noNegationElse": { "fix": "safe", "level": "error", "options": {} },
+                "noNonNullAssertion": "off",
+                "noParameterAssign": {
+                    "level": "error",
+                    "options": { "propertyAssignment": "deny" }
+                },
+                "noProcessEnv": "error",
+                "noSubstr": { "fix": "safe", "level": "error", "options": {} },
+                "noUselessElse": { "fix": "safe", "level": "error", "options": {} },
+                "noYodaExpression": { "fix": "safe", "level": "error", "options": {} },
+                "useAtIndex": { "fix": "safe", "level": "error", "options": {} },
+                "useBlockStatements": {
+                    "fix": "safe",
+                    "level": "error",
+                    "options": {}
+                },
+                "useCollapsedElseIf": {
+                    "fix": "safe",
+                    "level": "error",
+                    "options": {}
+                },
+                "useCollapsedIf": { "fix": "safe", "level": "error", "options": {} },
+                "useConsistentMemberAccessibility": {
+                    "level": "error",
+                    "options": { "accessibility": "explicit" }
+                },
+                "useDefaultParameterLast": "error",
+                "useExplicitLengthCheck": {
+                    "fix": "safe",
+                    "level": "error",
+                    "options": {}
+                },
+                "useFilenamingConvention": { "level": "error", "options": {} },
+                "useForOf": "error",
+                "useNodejsImportProtocol": {
+                    "fix": "safe",
+                    "level": "error",
+                    "options": {}
+                },
+                "useNumberNamespace": {
+                    "fix": "safe",
+                    "level": "error",
+                    "options": {}
+                },
+                "useSingleVarDeclarator": {
+                    "fix": "safe",
+                    "level": "error",
+                    "options": {}
+                },
+                "useTemplate": { "fix": "safe", "level": "error", "options": {} },
+                "useThrowNewError": { "fix": "safe", "level": "error", "options": {} },
+                "useThrowOnlyError": "error",
+                "useTrimStartEnd": { "fix": "safe", "level": "error", "options": {} },
+                "useFragmentSyntax": "error"
+            },
+
+            "suspicious": {
+                "noDoubleEquals": { "fix": "safe", "level": "error", "options": {} },
+                "noEmptyBlockStatements": "error",
+                "noExplicitAny": "error",
+                "noVar": { "fix": "safe", "level": "error", "options": {} },
+                "useAdjacentOverloadSignatures": "error",
+                "useAwait": "error",
+                "useDefaultSwitchClauseLast": "error",
+                "useErrorMessage": "error",
+                "useIsArray": { "fix": "safe", "level": "error", "options": {} },
+                "noArrayIndexKey": "error"
+            }
+        }
+    },
+
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single",
+            "semicolons": "asNeeded",
+            "trailingCommas": "es5"
+        }
+    },
+
+    "assist": {
+        "enabled": true,
+        "actions": {
+            "source": {
+                "organizeImports": "on"
+            }
+        }
+    }
+}
