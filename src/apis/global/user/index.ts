@@ -1,88 +1,127 @@
+// apis/user.ts
 import z from 'zod'
 import http from '@/utils/request'
 
-// 後端的資料格式
-const BackendUser = z.object({
-    userId: z.string(),
-    id: z.number(),
-    title: z.string(),
-    body: z.string(),
+/** ---------- 共同的 ApiResponse union ---------- */
+const DetailsSchema = z.object({
+    trace_id: z.string(),
 })
 
-// 前端期望的資料格式
-const FrontendUser = z.object({
-    userId1: z.string(),
-    id1: z.number(),
-    title1: z.string(),
-    body1: z.string(),
-})
-
-type User = z.infer<typeof FrontendUser>
-
-const requestCodec = z.codec(BackendUser, FrontendUser, {
-    // 將「後端格式」→「前端格式」
-    decode: (b) => {
-        return {
-            userId1: b.userId,
-            title1: b.title,
-            body1: b.body,
-            id1: b.id,
-        }
-    },
-    // 將「前端格式」→「後端格式」
-    encode: (f) => {
-        return {
-            userId: f.userId1,
-            title: f.title1,
-            body: f.body1,
-            id: f.id1,
-        }
-    },
-})
-
-const responseCodec = z.codec(BackendUser, FrontendUser, {
-    // 將「後端格式」→「前端格式」
-    decode: (b) => {
-        return {
-            userId1: b.userId,
-            title1: b.title,
-            body1: b.body,
-            id1: b.id,
-        }
-    },
-    // 將「前端格式」→「後端格式」
-    encode: (f) => {
-        return {
-            userId: f.userId1,
-            title: f.title1,
-            body: f.body1,
-            id: f.id1,
-        }
-    },
-})
-
-export function fakeGet() {
-    return http.request({
-        url: `/posts/1`,
-        method: 'get',
+const SuccessResponse = <T extends z.ZodTypeAny>(dataSchema: T) =>
+    z.object({
+        details: DetailsSchema,
+        data: dataSchema,
     })
-}
 
-export function fakePost(data: User) {
-    return http.request({
-        url: `/posts`,
-        method: 'post',
-        data,
+const ErrorResponse = () =>
+    z.object({
+        code: z.string(),
+        details: DetailsSchema,
+        message: z.string(),
+    })
+
+export const ApiResponse = <T extends z.ZodTypeAny>(dataSchema: T) =>
+    z.union([SuccessResponse(dataSchema), ErrorResponse()])
+
+/** ---------- refreshToken ---------- */
+// data schema
+const RefreshTokenResponseDataFrontendSchema = z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+})
+const RefreshTokenResponseDataBackendSchema = z.object({
+    access_token: z.string(),
+    refresh_token: z.string(),
+})
+
+// union schema
+const RefreshTokenResponseFrontendSchema = ApiResponse(RefreshTokenResponseDataFrontendSchema)
+const RefreshTokenResponseBackendSchema = ApiResponse(RefreshTokenResponseDataBackendSchema)
+
+// key map（只針對 data 內的鍵，有遞迴效果）
+const tokenKeyMap = {
+    access_token: 'accessToken',
+    refresh_token: 'refreshToken',
+} as const
+
+export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseFrontendSchema>
+
+export function refreshToken() {
+    return http.request<RefreshTokenResponse>({
+        url: `/authorization/refreshToken`,
+        method: 'get',
         codec: {
-            request: requestCodec,
-            response: responseCodec,
+            response: {
+                // 後端回來先以 backendSchema 驗證
+                backendSchema: RefreshTokenResponseBackendSchema,
+                // 再映射鍵、最後以 frontendSchema 驗證
+                frontendSchema: RefreshTokenResponseFrontendSchema,
+            },
+            dataKeyMap: tokenKeyMap,
         },
     })
 }
 
-export function refreshToken() {
-    return http.request({
-        url: `/refreshToken`,
-        method: 'get',
+/** ---------- login ---------- */
+// request data schema（keys 相同，無需 keyMap）
+const LoginRequestFrontendSchema = z.object({
+    email: z.string(),
+    password: z.string(),
+})
+const LoginRequestBackendSchema = z.object({
+    email: z.string(),
+    password: z.string(),
+})
+
+// response data/union schema（沿用 token）
+const LoginResponseDataFrontendSchema = RefreshTokenResponseDataFrontendSchema
+const LoginResponseDataBackendSchema = RefreshTokenResponseDataBackendSchema
+
+const LoginResponseFrontendSchema = ApiResponse(LoginResponseDataFrontendSchema)
+const LoginResponseBackendSchema = ApiResponse(LoginResponseDataBackendSchema)
+
+export type LoginRequest = z.infer<typeof LoginRequestFrontendSchema>
+export type LoginResponse = z.infer<typeof LoginResponseFrontendSchema>
+
+export function login(data: LoginRequest) {
+    return http.request<LoginResponse>({
+        url: `/player/login`,
+        method: 'post',
+        data,
+        codec: {
+            request: {
+                frontendSchema: LoginRequestFrontendSchema,
+                backendSchema: LoginRequestBackendSchema,
+            },
+            response: {
+                backendSchema: LoginResponseBackendSchema,
+                frontendSchema: LoginResponseFrontendSchema,
+            },
+            dataKeyMap: tokenKeyMap, // 只影響 response 裡 data 的鍵（access_token⇄accessToken）
+        },
+    })
+}
+
+/** ---------- logout ---------- */
+// 回傳 data 是 string，無鍵轉需求
+const LogoutResponseDataFrontendSchema = z.string()
+const LogoutResponseDataBackendSchema = z.string()
+
+const LogoutResponseFrontendSchema = ApiResponse(LogoutResponseDataFrontendSchema)
+const LogoutResponseBackendSchema = ApiResponse(LogoutResponseDataBackendSchema)
+
+export type LogoutResponse = z.infer<typeof LogoutResponseFrontendSchema>
+
+export function logout() {
+    return http.request<LogoutResponse>({
+        url: `/player/logout`,
+        method: 'post',
+        codec: {
+            response: {
+                backendSchema: LogoutResponseBackendSchema,
+                frontendSchema: LogoutResponseFrontendSchema,
+            },
+            // 沒有 key 差異就不傳 dataKeyMap
+        },
     })
 }
