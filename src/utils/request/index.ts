@@ -2,7 +2,7 @@
 import axios, { AxiosHeaders } from 'axios'
 import z from 'zod'
 import { decode } from '@/utils/jwt'
-import { getLocalStorage, setLocalStorage } from '@/utils/storage'
+import { getLocalStorage, removeLocalStorage, setLocalStorage } from '@/utils/storage'
 
 /** --------- 遞迴 key 映射工具 --------- */
 type KeyMap = Record<string, string> // backend_key -> frontendKey
@@ -151,8 +151,8 @@ http.interceptors.response.use(
         console.log('error', response)
         const isRefreshToken = config.url === '/authorization/refreshToken'
         if (status === 401 && isRefreshToken) {
-            localStorage.removeItem('accessToken')
-            localStorage.removeItem('refreshToken')
+            removeLocalStorage('accessToken')
+            removeLocalStorage('refreshToken')
             return Promise.reject(error)
         }
         return Promise.reject(error)

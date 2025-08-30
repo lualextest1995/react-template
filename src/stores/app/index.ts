@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { getLocalStorage, setLocalStorage } from '@/utils/storage'
 import i18next from '@/i18n'
+import { getLocalStorage, setLocalStorage } from '@/utils/storage'
 
 type Version = {
     client: string
