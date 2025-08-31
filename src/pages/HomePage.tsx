@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/base/button'
 import {
     Select,
@@ -23,7 +24,9 @@ export const HomePage: React.FC = () => {
         <div className="p-6 space-y-4">
             <h1 className="text-2xl font-bold">首頁</h1>
             <p className="text-muted-foreground">這是首頁內容，測試 Keep-Alive 功能</p>
-
+            <Link to="/login">前往 Login 頁面</Link>
+            <br />
+            <br />
             <div className="flex items-center space-x-4">
                 {' '}
                 <Select value={language} onValueChange={(value) => setLanguage(value)}>

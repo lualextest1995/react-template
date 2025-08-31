@@ -1,4 +1,4 @@
-import JWT from 'jsonwebtoken'
+import { jwtDecode } from 'jwt-decode'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
     decode,
@@ -11,15 +11,13 @@ import {
     shouldRefresh,
 } from './index'
 
-// Mock jsonwebtoken
-vi.mock('jsonwebtoken', () => ({
-    default: {
-        decode: vi.fn(),
-    },
+// Mock jwt-decode
+vi.mock('jwt-decode', () => ({
+    jwtDecode: vi.fn(),
 }))
 
 describe('JWT Utils', () => {
-    const mockJWT = vi.mocked(JWT)
+    const mockJwtDecode = vi.mocked(jwtDecode)
 
     // Test data
     const validToken =
@@ -56,11 +54,11 @@ describe('JWT Utils', () => {
 
     describe('decode', () => {
         it('should decode valid token successfully', () => {
-            mockJWT.decode.mockReturnValue(mockPayload)
+            mockJwtDecode.mockReturnValue(mockPayload)
 
             const result = decode(validToken)
 
-            expect(mockJWT.decode).toHaveBeenCalledWith(validToken)
+            expect(mockJwtDecode).toHaveBeenCalledWith(validToken)
             expect(result).toEqual(mockPayload)
         })
 
@@ -68,25 +66,25 @@ describe('JWT Utils', () => {
             const result = decode(null)
 
             expect(result).toBeNull()
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
         it('should return null for undefined token', () => {
             const result = decode(undefined)
 
             expect(result).toBeNull()
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
         it('should return null for empty string token', () => {
             const result = decode('')
 
             expect(result).toBeNull()
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
-        it('should return null when JWT.decode throws error', () => {
-            mockJWT.decode.mockImplementation(() => {
+        it('should return null when jwtDecode throws error', () => {
+            mockJwtDecode.mockImplementation(() => {
                 throw new Error('Invalid token')
             })
 
@@ -98,7 +96,7 @@ describe('JWT Utils', () => {
 
     describe('isValid', () => {
         it('should return true for valid token format', () => {
-            mockJWT.decode.mockReturnValue(mockPayload)
+            mockJwtDecode.mockReturnValue(mockPayload)
 
             const result = isValid(validToken)
 
@@ -109,21 +107,21 @@ describe('JWT Utils', () => {
             const result = isValid(null)
 
             expect(result).toBe(false)
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
         it('should return false for undefined token', () => {
             const result = isValid(undefined)
 
             expect(result).toBe(false)
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
         it('should return false for non-string token', () => {
             const result = isValid(123 as unknown as string)
 
             expect(result).toBe(false)
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
         it('should return false for token without 3 parts', () => {
@@ -132,7 +130,7 @@ describe('JWT Utils', () => {
             const result = isValid(invalidToken)
 
             expect(result).toBe(false)
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
         it('should return false for token with too many parts', () => {
@@ -141,19 +139,19 @@ describe('JWT Utils', () => {
             const result = isValid(invalidToken)
 
             expect(result).toBe(false)
-            expect(mockJWT.decode).not.toHaveBeenCalled()
+            expect(mockJwtDecode).not.toHaveBeenCalled()
         })
 
-        it('should return false when JWT.decode returns null', () => {
-            mockJWT.decode.mockReturnValue(null)
+        it('should return false when jwtDecode returns null', () => {
+            mockJwtDecode.mockReturnValue(null)
 
             const result = isValid(validToken)
 
             expect(result).toBe(false)
         })
 
-        it('should return false when JWT.decode throws error', () => {
-            mockJWT.decode.mockImplementation(() => {
+        it('should return false when jwtDecode throws error', () => {
+            mockJwtDecode.mockImplementation(() => {
                 throw new Error('Invalid token')
             })
 
@@ -165,7 +163,7 @@ describe('JWT Utils', () => {
 
     describe('isExpired', () => {
         it('should return false for valid non-expired token', () => {
-            mockJWT.decode.mockReturnValue(mockPayload)
+            mockJwtDecode.mockReturnValue(mockPayload)
 
             const result = isExpired(validToken)
 
@@ -173,7 +171,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return true for expired token', () => {
-            mockJWT.decode.mockReturnValue(expiredPayload)
+            mockJwtDecode.mockReturnValue(expiredPayload)
 
             const result = isExpired(validToken)
 
@@ -181,7 +179,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return true for invalid token', () => {
-            mockJWT.decode.mockReturnValue(null)
+            mockJwtDecode.mockReturnValue(null)
 
             const result = isExpired('invalid-token')
 
@@ -197,7 +195,7 @@ describe('JWT Utils', () => {
                 iat: mockPayload.iat,
                 // exp 欄位被省略
             }
-            mockJWT.decode.mockReturnValue(payloadWithoutExp as JWTPayload)
+            mockJwtDecode.mockReturnValue(payloadWithoutExp as JWTPayload)
 
             const result = isExpired(validToken)
 
@@ -221,7 +219,7 @@ describe('JWT Utils', () => {
         it('should return correct remaining time for valid token', () => {
             const futureExp = Math.floor(Date.now() / 1000) + 1800 // 30 分鐘後
             const payload = { ...mockPayload, exp: futureExp }
-            mockJWT.decode.mockReturnValue(payload)
+            mockJwtDecode.mockReturnValue(payload)
 
             const result = getRemainingTime(validToken)
 
@@ -230,7 +228,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return 0 for expired token', () => {
-            mockJWT.decode.mockReturnValue(expiredPayload)
+            mockJwtDecode.mockReturnValue(expiredPayload)
 
             const result = getRemainingTime(validToken)
 
@@ -238,7 +236,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return 0 for invalid token', () => {
-            mockJWT.decode.mockReturnValue(null)
+            mockJwtDecode.mockReturnValue(null)
 
             const result = getRemainingTime('invalid-token')
 
@@ -254,7 +252,7 @@ describe('JWT Utils', () => {
                 iat: mockPayload.iat,
                 // exp 欄位被省略
             }
-            mockJWT.decode.mockReturnValue(payloadWithoutExp as JWTPayload)
+            mockJwtDecode.mockReturnValue(payloadWithoutExp as JWTPayload)
 
             const result = getRemainingTime(validToken)
 
@@ -270,7 +268,7 @@ describe('JWT Utils', () => {
 
     describe('getUserId', () => {
         it('should return user_id from valid token', () => {
-            mockJWT.decode.mockReturnValue(mockPayload)
+            mockJwtDecode.mockReturnValue(mockPayload)
 
             const result = getUserId(validToken)
 
@@ -286,7 +284,7 @@ describe('JWT Utils', () => {
                 exp: mockPayload.exp,
                 // user_id 欄位被省略
             }
-            mockJWT.decode.mockReturnValue(payloadWithoutUserId as JWTPayload)
+            mockJwtDecode.mockReturnValue(payloadWithoutUserId as JWTPayload)
 
             const result = getUserId(validToken)
 
@@ -294,7 +292,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return null for invalid token', () => {
-            mockJWT.decode.mockReturnValue(null)
+            mockJwtDecode.mockReturnValue(null)
 
             const result = getUserId('invalid-token')
 
@@ -318,7 +316,7 @@ describe('JWT Utils', () => {
         it('should return false for token with enough remaining time', () => {
             const futureExp = Math.floor(Date.now() / 1000) + 1800 // 30 分鐘後
             const payload = { ...mockPayload, exp: futureExp }
-            mockJWT.decode.mockReturnValue(payload)
+            mockJwtDecode.mockReturnValue(payload)
 
             const result = shouldRefresh(validToken, 5) // 5 分鐘緩衝時間
 
@@ -328,7 +326,7 @@ describe('JWT Utils', () => {
         it('should return true for token that needs refresh soon', () => {
             const soonExp = Math.floor(Date.now() / 1000) + 240 // 4 分鐘後
             const payload = { ...mockPayload, exp: soonExp }
-            mockJWT.decode.mockReturnValue(payload)
+            mockJwtDecode.mockReturnValue(payload)
 
             const result = shouldRefresh(validToken, 5) // 5 分鐘緩衝時間
 
@@ -336,7 +334,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return true for invalid token', () => {
-            mockJWT.decode.mockReturnValue(null)
+            mockJwtDecode.mockReturnValue(null)
 
             const result = shouldRefresh('invalid-token')
 
@@ -344,7 +342,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return true for expired token', () => {
-            mockJWT.decode.mockReturnValue(expiredPayload)
+            mockJwtDecode.mockReturnValue(expiredPayload)
 
             const result = shouldRefresh(validToken)
 
@@ -354,7 +352,7 @@ describe('JWT Utils', () => {
         it('should use default buffer time of 5 minutes', () => {
             const closeExp = Math.floor(Date.now() / 1000) + 240 // 4 分鐘後
             const payload = { ...mockPayload, exp: closeExp }
-            mockJWT.decode.mockReturnValue(payload)
+            mockJwtDecode.mockReturnValue(payload)
 
             const result = shouldRefresh(validToken) // 不指定緩衝時間，應使用預設 5 分鐘
 
@@ -364,7 +362,7 @@ describe('JWT Utils', () => {
 
     describe('hasIP', () => {
         it('should return true for token with IP field', () => {
-            mockJWT.decode.mockReturnValue(mockPayload)
+            mockJwtDecode.mockReturnValue(mockPayload)
 
             const result = hasIP(validToken)
 
@@ -372,7 +370,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return false for token without IP field', () => {
-            mockJWT.decode.mockReturnValue(payloadWithoutIP)
+            mockJwtDecode.mockReturnValue(payloadWithoutIP)
 
             const result = hasIP(validToken)
 
@@ -381,7 +379,7 @@ describe('JWT Utils', () => {
 
         it('should return false for token with empty IP field', () => {
             const payloadWithEmptyIP = { ...mockPayload, ip: '' }
-            mockJWT.decode.mockReturnValue(payloadWithEmptyIP)
+            mockJwtDecode.mockReturnValue(payloadWithEmptyIP)
 
             const result = hasIP(validToken)
 
@@ -389,7 +387,7 @@ describe('JWT Utils', () => {
         })
 
         it('should return false for invalid token', () => {
-            mockJWT.decode.mockReturnValue(null)
+            mockJwtDecode.mockReturnValue(null)
 
             const result = hasIP('invalid-token')
 
@@ -412,7 +410,7 @@ describe('JWT Utils', () => {
     describe('Integration Tests', () => {
         it('should handle complete JWT workflow', () => {
             // 測試完整的 JWT 處理流程
-            mockJWT.decode.mockReturnValue(mockPayload)
+            mockJwtDecode.mockReturnValue(mockPayload)
 
             // 驗證 token 有效性
             expect(isValid(validToken)).toBe(true)
@@ -436,8 +434,8 @@ describe('JWT Utils', () => {
         it('should handle invalid token workflow', () => {
             const invalidToken = 'invalid.token.format'
 
-            // 模擬 JWT.decode 對無效 token 返回 null
-            mockJWT.decode.mockReturnValue(null)
+            // 模擬 jwtDecode 對無效 token 返回 null
+            mockJwtDecode.mockReturnValue(null)
 
             // 無效 token 的所有檢查都應該返回安全的預設值
             expect(isValid(invalidToken)).toBe(false)

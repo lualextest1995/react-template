@@ -1,22 +1,33 @@
-import React from 'react'
+import { useMutation } from '@tanstack/react-query'
+import type React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { TabBar } from '@/components/TabBar'
+import { logout } from '@/apis/global/user'
+import { Button } from '@/components/base/button'
 import { KeepAliveOutlet } from '@/components/KeepAliveOutlet'
+import { TabBar } from '@/components/TabBar'
 import { useSyncTabsWithRouter } from '@/hooks/useSyncTabsWithRouter'
 import { useRouteStore } from '@/stores/route'
-import { useAuthStore } from '@/stores/auth'
+import { useUserStore } from '@/stores/user'
 import { requireAuth } from '@/utils/auth'
 
 const Layout: React.FC = () => {
     const { routes } = useRouteStore()
-    const { user, logout } = useAuthStore()
+    const { user } = useUserStore()
+    const resetUser = useUserStore((s) => s.resetUser)
     const navigate = useNavigate()
     useSyncTabsWithRouter()
 
+    const { mutateAsync } = useMutation({
+        mutationFn: () => logout(),
+        onSettled: () => {
+            resetUser()
+            navigate('/login', { replace: true })
+            console.log('登出請求已完成')
+        },
+    })
+
     const handleLogout = () => {
-        logout()
-        // 登出後手動導航到登入頁面
-        navigate('/login', { replace: true })
+        mutateAsync()
     }
 
     return (
@@ -46,12 +57,12 @@ const Layout: React.FC = () => {
                         <p className="text-sm text-gray-600">歡迎</p>
                         <p className="font-medium">{user?.name || user?.username}</p>
                     </div>
-                    <button
+                    <Button
                         onClick={handleLogout}
                         className="w-full px-3 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
                     >
                         登出
-                    </button>
+                    </Button>
                 </div>
             </aside>
 

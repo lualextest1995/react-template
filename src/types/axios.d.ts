@@ -11,6 +11,13 @@ declare module 'axios' {
 }
 
 interface Codec {
-    request?: ZodTypeAny
-    response?: ZodTypeAny
+    request?: {
+        frontendSchema: ZodTypeAny
+        backendSchema: ZodTypeAny
+    }
+    response?: {
+        frontendSchema: ZodTypeAny
+        backendSchema: ZodTypeAny
+    }
+    dataKeyMap?: Record<string, string>
 }

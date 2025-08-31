@@ -1,5 +1,5 @@
 // jwt.ts
-import JWT from 'jsonwebtoken'
+import { jwtDecode } from 'jwt-decode'
 
 /**
  * JWT Token Payload 介面定義
@@ -23,7 +23,7 @@ export interface JWTPayload {
 /**
  * 解析 JWT token 並回傳 payload
  *
- * @description 使用 jsonwebtoken 函式庫解析 JWT token，回傳其中的 payload 資料
+ * @description 使用 jwt-decode 函式庫解析 JWT token，回傳其中的 payload 資料
  * @param {string | null | undefined} token - 要解析的 JWT token
  * @returns {JWTPayload | null} 解析成功回傳 payload 物件，失敗回傳 null
  */
@@ -33,7 +33,7 @@ export const decode = (token: string | null | undefined): JWTPayload | null => {
     }
 
     try {
-        const decoded = JWT.decode(token) as JWTPayload
+        const decoded = jwtDecode<JWTPayload>(token)
         return decoded
     } catch {
         return null
@@ -59,7 +59,7 @@ export const isValid = (token: string | null | undefined): boolean => {
         }
 
         // Try to decode to verify format
-        const decoded = JWT.decode(token)
+        const decoded = jwtDecode(token)
         return decoded !== null
     } catch {
         return false

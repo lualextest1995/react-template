@@ -1,51 +1,59 @@
-import React, { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import type React from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/auth'
+import { login } from '@/apis/global/user'
+import { useUserStore } from '@/stores/user'
+
+type FormData = {
+    email: string
+    password: string
+}
 
 export const LoginPage: React.FC = () => {
-    const [formData, setFormData] = useState({
-        username: '',
-        password: '',
-    })
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState('')
+    const [formData, setFormData] = useState<FormData>({ email: '', password: '' })
+    const [error, setError] = useState<string>('')
     const navigate = useNavigate()
-    const { login } = useAuthStore()
+    const setUser = useUserStore((s) => s.setUser)
+
+    const { mutateAsync, isPending } = useMutation({
+        mutationFn: (data: FormData) => login(data),
+        // onSuccess: (data) => {
+        //     setUser(data.user)
+        //     navigate('/', { replace: true })
+        // },
+        // onError: (err) => {
+        //     setError(getErrorMessage(err))
+        // },
+        onSettled: () => {
+            setUser({
+                id: '1',
+                username: 'admin',
+                name: '管理員',
+            })
+            navigate('/', { replace: true })
+            console.log('登入請求已完成')
+        },
+    })
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }))
-        if (error) setError('')
+        setFormData((prev) => ({ ...prev, [name]: value }))
+        if (error) {
+            setError('')
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-
-        if (!formData.username || !formData.password) {
+        // 最小必要驗證
+        if (!formData.email || !formData.password) {
             setError('請填寫所有必填欄位')
             return
         }
-
-        setIsLoading(true)
         setError('')
-
-        try {
-            const success = await login(formData.username, formData.password)
-
-            if (success) {
-                // 登入成功，重定向到首頁
-                navigate('/', { replace: true })
-            } else {
-                setError('帳號或密碼錯誤')
-            }
-        } catch {
-            setError('登入失敗，請稍後重試')
-        } finally {
-            setIsLoading(false)
-        }
+        // 交給 react-query
+        await mutateAsync(formData)
     }
 
     return (
@@ -55,7 +63,7 @@ export const LoginPage: React.FC = () => {
                 <p className="text-gray-600">請登入您的帳號</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                 <div>
                     <label
                         htmlFor="username"
@@ -64,14 +72,17 @@ export const LoginPage: React.FC = () => {
                         帳號
                     </label>
                     <input
+                        id="email"
+                        name="email"
                         type="text"
-                        id="username"
-                        name="username"
-                        value={formData.username}
+                        autoComplete="email"
+                        value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        disabled={isPending}
+                        aria-invalid={!!error}
+                        aria-describedby={error ? 'login-error' : undefined}
                         placeholder="請輸入帳號"
-                        disabled={isLoading}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
                 </div>
 
@@ -83,29 +94,35 @@ export const LoginPage: React.FC = () => {
                         密碼
                     </label>
                     <input
-                        type="password"
                         id="password"
                         name="password"
+                        type="password"
+                        autoComplete="current-password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        disabled={isPending}
+                        aria-invalid={!!error}
+                        aria-describedby={error ? 'login-error' : undefined}
                         placeholder="請輸入密碼"
-                        disabled={isLoading}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
                 </div>
 
                 {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    <div
+                        id="login-error"
+                        className="bg-red-50 border border-red-200 rounded-md p-3"
+                    >
                         <p className="text-sm text-red-600">{error}</p>
                     </div>
                 )}
 
                 <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isPending}
                     className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
-                    {isLoading ? '登入中...' : '登入'}
+                    {isPending ? '登入中...' : '登入'}
                 </button>
             </form>
 

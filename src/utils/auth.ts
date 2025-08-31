@@ -1,8 +1,9 @@
 import { redirect } from 'react-router-dom'
-import { useAuthStore } from '@/stores/auth'
+import { useUserStore } from '@/stores/user'
 
 export const requireAuth = () => {
-    const { isAuthenticated } = useAuthStore.getState()
+    const { isAuthenticated } = useUserStore.getState()
+    console.log('isAuthenticated', isAuthenticated)
 
     if (!isAuthenticated) {
         throw redirect('/login')
@@ -12,8 +13,8 @@ export const requireAuth = () => {
 }
 
 export const requireGuest = () => {
-    const { isAuthenticated } = useAuthStore.getState()
-
+    const { isAuthenticated } = useUserStore.getState()
+    console.log('isAuthenticated', isAuthenticated)
     if (isAuthenticated) {
         throw redirect('/')
     }

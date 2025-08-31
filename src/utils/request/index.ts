@@ -1,14 +1,19 @@
-// request
+// request.ts
+
+import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import axios, { AxiosHeaders } from 'axios'
-import z from 'zod'
-import { decode } from '@/utils/jwt'
+import { useAuthQueueStore } from '@/utils/authQueue'
+import { hasIP, isExpired, isValid } from '@/utils/jwt'
 import { getLocalStorage, removeLocalStorage, setLocalStorage } from '@/utils/storage'
 
 /** --------- 遞迴 key 映射工具 --------- */
 type KeyMap = Record<string, string> // backend_key -> frontendKey
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-    typeof v === 'object' && v !== null && !Array.isArray(v)
+    typeof v === 'object' &&
+    v !== null &&
+    !Array.isArray(v) &&
+    Object.prototype.toString.call(v) === '[object Object]'
 
 export function mapKeys(input: unknown, keyMap: KeyMap, direction: 'b2f' | 'f2b'): unknown {
     if (Array.isArray(input)) {
@@ -18,17 +23,17 @@ export function mapKeys(input: unknown, keyMap: KeyMap, direction: 'b2f' | 'f2b'
         return input
     }
 
-    const out: Record<string, unknown> = {}
+    const result: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(input)) {
         const mapped =
             direction === 'b2f'
                 ? (keyMap[k] ?? k) // 後端 → 前端
-                : // 前端 → 後端 (反查)
-                  (Object.keys(keyMap).find((bk) => keyMap[bk] === k) ?? k)
+                : (Object.keys(keyMap).find((bk) => keyMap[bk] === k) ?? k) // 前端 → 後端 (反查)
 
-        out[mapped] = mapKeys(v, keyMap, direction)
+        // biome-ignore lint/style/noParameterAssign: result is a local variable, not a parameter
+        result[mapped] = mapKeys(v, keyMap, direction)
     }
-    return out
+    return result
 }
 
 // 建立 axios instance
@@ -41,9 +46,12 @@ const http = axios.create({
     },
 })
 
-function requestValidate(config) {
+function requestValidate(config: AxiosRequestConfig) {
     const { codec, data, url } = config
     try {
+        if (!codec?.request) {
+            return data
+        }
         const { frontendSchema, backendSchema } = codec.request
         const dataKeyMap = codec.dataKeyMap ?? {}
 
@@ -63,11 +71,13 @@ function requestValidate(config) {
     }
 }
 
-function responseValidate(response) {
-    ;``
+function responseValidate(response: AxiosResponse) {
     const { config, data, status } = response
     try {
         const codec = config.codec
+        if (!codec?.response) {
+            return data
+        }
         const { frontendSchema, backendSchema } = codec.response
         const dataKeyMap = codec.dataKeyMap ?? {}
 
@@ -91,9 +101,20 @@ function responseValidate(response) {
 http.interceptors.request.use(
     (config) => {
         const { method, data, headers, codec } = config
+        const isOnline = navigator.onLine
+        const accessToken = getLocalStorage('accessToken', null)
+        const refreshToken = getLocalStorage('refreshToken', null)
+        const language = getLocalStorage('language', null)
+        const isRefreshToken = config.url === '/authorization/refreshToken'
         const newConfig = { ...config }
         const newHeaders = new AxiosHeaders(headers)
         let newData = { ...data }
+
+        // 檢查網路狀態
+        if (!isOnline) {
+            console.warn(`網路連線已斷開，請檢查您的網路設定`)
+            return Promise.reject(new Error('NETWORK_OFFLINE'))
+        }
 
         // 使用 zod 進行簡單的請求參數驗證
         if (codec?.request) {
@@ -109,15 +130,41 @@ http.interceptors.request.use(
             newConfig.params = newData
         }
 
-        // 添加 JWT token & Language 在 headers 中
-        const accessToken = getLocalStorage('accessToken', null)
-        if (accessToken) {
-            newHeaders.set('x-access-token', accessToken)
-        }
-        const language = getLocalStorage('language', null)
+        // 添加 Language 在 headers 中
         if (language) {
             newHeaders.set('x-locale', language)
+            newConfig.headers = newHeaders
         }
+
+        // 檢查 access token 跟 refresh token，其中一個沒有就不帶 token
+        if (!accessToken || !refreshToken) {
+            return newConfig
+        }
+
+        // 檢查 access token 跟 refresh token 是否合法，其中一個不合法就不帶 token
+        if (!isValid(accessToken) || !isValid(refreshToken)) {
+            return newConfig
+        }
+
+        // 檢查 access token 是否過期，沒有過期才帶 token
+        if (isExpired(accessToken)) {
+            return newConfig
+        }
+
+        // 如果是 refreshToken 的 api，且 accessToken 沒有 IP 資訊，則不帶 token
+        if (isRefreshToken && !hasIP(accessToken)) {
+            return newConfig
+        }
+
+        // 帶上 access token
+        newHeaders.set('x-access-token', accessToken)
+
+        // 如果是 refreshToken 的 api，則帶上 refresh token
+        if (isRefreshToken) {
+            newHeaders.set('x-refresh-token', refreshToken)
+        }
+
+        // 設定 headers
         newConfig.headers = newHeaders
 
         return newConfig
@@ -130,30 +177,57 @@ http.interceptors.request.use(
 // 回應攔截器
 http.interceptors.response.use(
     (response) => {
-        const { config, data, status } = response
-        const accessToken = data.data?.access_token ?? null
-        const refreshToken = data.data?.refresh_token ?? null
+        // 使用 zod 進行簡單的回應資料驗證
+        const codec = response.config.codec
+        const responseData = codec?.response ? responseValidate(response) : response.data
+
+        // 設置 access token 跟 refresh token
+        const accessToken = responseData?.accessToken ?? responseData?.access_token ?? null
+        const refreshToken = responseData?.refreshToken ?? responseData?.refresh_token ?? null
         if (accessToken) {
             setLocalStorage('accessToken', accessToken)
         }
         if (refreshToken) {
             setLocalStorage('refreshToken', refreshToken)
         }
-        // 使用 zod 進行簡單的回應資料驗證
-        const codec = response.config.codec
-        if (codec?.response) {
-            return responseValidate(response)
+
+        // 檢查回應資料類型
+        const type = Object.prototype.toString.call(responseData)
+        const isBlobOrArrayBuffer = type === '[object Blob]' || type === '[object ArrayBuffer]'
+        if (isBlobOrArrayBuffer) {
+            return response
         }
-        return response.data
+
+        return responseData
     },
-    (error) => {
-        const { response, config, status } = error
-        console.log('error', response)
+    async (error) => {
+        const { config, status, response } = error
         const isRefreshToken = config.url === '/authorization/refreshToken'
         if (status === 401 && isRefreshToken) {
             removeLocalStorage('accessToken')
             removeLocalStorage('refreshToken')
             return Promise.reject(error)
+        }
+
+        //Blob 錯誤解析（
+        if (response?.data instanceof Blob) {
+            try {
+                const text = await (response.data as Blob).text()
+                const json = JSON.parse(text)
+                if (json?.status === 401 && config) {
+                    const q = useAuthQueueStore.getState()
+                    return q.handle401(config, http)
+                }
+                return Promise.reject(Object.assign(error, { parsed: json }))
+            } catch {
+                return Promise.reject(error)
+            }
+        }
+
+        // 401 錯誤處理
+        if (status === 401 && config) {
+            const q = useAuthQueueStore.getState()
+            return q.handle401(config, http)
         }
         return Promise.reject(error)
     }
