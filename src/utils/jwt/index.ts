@@ -144,3 +144,13 @@ export const hasIP = (token: string | null | undefined): boolean => {
     const payload = decode(token)
     return !!payload?.ip
 }
+
+/**
+ * 取得 JWT token 的過期時間
+ * @param token - 要檢查的 JWT token
+ * @returns {number} 過期時間 (秒)
+ */
+export const getExpiredTime = (token: string | null | undefined): number => {
+    const payload = decode(token)
+    return payload?.exp || 0
+}

@@ -4,9 +4,11 @@ import type { ZodTypeAny } from 'zod'
 declare module 'axios' {
     export interface AxiosRequestConfig {
         codec?: Codec
+        isCodec?: boolean
     }
     export interface InternalAxiosRequestConfig {
         codec?: Codec
+        isCodec?: boolean
     }
 }
 
