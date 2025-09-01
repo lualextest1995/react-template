@@ -1,13 +1,14 @@
+import type React from 'react'
 import { create } from 'zustand'
-import React from 'react'
-import { HomePage } from '@/pages/HomePage'
+import AppLayout from '@/layout/AppLayout'
+import Layout1 from '@/layout/LoginLayout'
+import Layout from '@/layout/TabsLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
-import { UsersPage } from '@/pages/UsersPage'
-import { SettingsPage } from '@/pages/SettingsPage'
+import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import Layout from '@/layout/TabsLayout'
-import Layout1 from '@/layout/LoginLayout'
+import { SettingsPage } from '@/pages/SettingsPage'
+import { UsersPage } from '@/pages/UsersPage'
 import { requireAuth, requireGuest } from '@/utils/auth'
 
 export interface RouteConfig {
@@ -34,7 +35,7 @@ const defaultRoutes: RouteConfig[] = [
         id: 'home',
         path: '/',
         title: '首頁',
-        layout: Layout,
+        layout: AppLayout,
         component: HomePage,
         loader: requireAuth,
         meta: { icon: 'home' },
@@ -43,7 +44,7 @@ const defaultRoutes: RouteConfig[] = [
         id: 'dashboard',
         path: '/dashboard',
         title: '儀表板',
-        layout: Layout,
+        layout: AppLayout,
         component: DashboardPage,
         loader: requireAuth,
         meta: { icon: 'dashboard' },
@@ -52,7 +53,7 @@ const defaultRoutes: RouteConfig[] = [
         id: 'users',
         path: '/users',
         title: '用戶管理',
-        layout: Layout,
+        layout: AppLayout,
         component: UsersPage,
         loader: requireAuth,
         meta: { icon: 'users' },
@@ -61,7 +62,7 @@ const defaultRoutes: RouteConfig[] = [
         id: 'settings',
         path: '/settings',
         title: '設定',
-        layout: Layout,
+        layout: AppLayout,
         component: SettingsPage,
         loader: requireAuth,
         meta: { icon: 'settings' },
@@ -141,7 +142,9 @@ export const useRouteStore = create<RouteStore>((set, get) => ({
 
         // 精確匹配
         const exactMatch = routes.find((route) => route.path === pathname)
-        if (exactMatch) return exactMatch
+        if (exactMatch) {
+            return exactMatch
+        }
 
         // 動態路由匹配（例如 /users/:id）
         for (const route of routes) {
@@ -154,7 +157,9 @@ export const useRouteStore = create<RouteStore>((set, get) => ({
 
         // 路徑前綴匹配（例如 /users/123 匹配 /users）
         const prefixMatch = routes.find((route) => {
-            if (route.path === '/') return false
+            if (route.path === '/') {
+                return false
+            }
             return pathname.startsWith(route.path)
         })
 
