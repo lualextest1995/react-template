@@ -1,8 +1,9 @@
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { create } from 'zustand'
-import { refreshToken } from '@/apis/global/user'
+import { initialToken, refreshToken } from '@/apis/global/user'
+import { useUserStore } from '@/stores/user'
+import { clearAllCookies } from '@/utils/cookie'
 import { hasIP } from '@/utils/jwt'
-import { removeLocalStorage } from '@/utils/storage'
 
 /** 刷新 token 的最大重試次數 */
 const REFRESH_LIMIT = 6
@@ -99,8 +100,7 @@ export const useAuthQueueStore = create<AuthQueueState>((set, get) => ({
      * 清除本地存儲中的 access token 和 refresh token
      */
     clearTokens: () => {
-        removeLocalStorage('accessToken')
-        removeLocalStorage('refreshToken')
+        clearAllCookies()
     },
 
     /**
@@ -128,6 +128,7 @@ export const useAuthQueueStore = create<AuthQueueState>((set, get) => ({
     handlerByRefreshAccessToken: async (http) => {
         const state = get()
         const { rateLimit, clearTokens, rejectAllQueue } = state
+        const { isAuthenticated } = useUserStore.getState()
 
         if (rateLimit <= 0) {
             clearTokens()
@@ -138,7 +139,7 @@ export const useAuthQueueStore = create<AuthQueueState>((set, get) => ({
 
         try {
             set((s) => ({ rateLimit: s.rateLimit - 1 }))
-            const res = await refreshToken()
+            const res = isAuthenticated ? await refreshToken() : await initialToken()
             await handleRefreshSuccess(res, http, get, set)
         } catch (err) {
             handleRefreshError(err, clearTokens, rejectAllQueue)

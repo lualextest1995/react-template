@@ -3,7 +3,7 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import axios, { AxiosHeaders } from 'axios'
 import * as R from 'ramda'
-import { useAuthQueueStore } from '@/utils/authQueue'
+import { useAuthQueueStore } from '@/stores/authQueue'
 import { getCookie, removeCookie, setCookie } from '@/utils/cookie'
 import { getExpiredTime, hasIP, isExpired, isValid } from '@/utils/jwt'
 import { getLocalStorage } from '@/utils/storage'

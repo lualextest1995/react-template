@@ -3,7 +3,6 @@ import { useUserStore } from '@/stores/user'
 
 export const requireAuth = () => {
     const { isAuthenticated } = useUserStore.getState()
-    console.log('isAuthenticated', isAuthenticated)
 
     if (!isAuthenticated) {
         throw redirect('/login')
@@ -14,7 +13,6 @@ export const requireAuth = () => {
 
 export const requireGuest = () => {
     const { isAuthenticated } = useUserStore.getState()
-    console.log('isAuthenticated', isAuthenticated)
     if (isAuthenticated) {
         throw redirect('/')
     }

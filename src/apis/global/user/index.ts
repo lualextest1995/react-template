@@ -23,6 +23,45 @@ const ErrorResponse = () =>
 export const ApiResponse = <T extends z.ZodTypeAny>(dataSchema: T) =>
     z.union([SuccessResponse(dataSchema), ErrorResponse()])
 
+/** ---------- initialToken ---------- */
+// data schema
+const InitialTokenResponseDataFrontendSchema = z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+})
+const InitialTokenResponseDataBackendSchema = z.object({
+    access_token: z.string(),
+    refresh_token: z.string(),
+})
+
+// union schema
+const InitialTokenResponseFrontendSchema = ApiResponse(InitialTokenResponseDataFrontendSchema)
+const InitialTokenResponseBackendSchema = ApiResponse(InitialTokenResponseDataBackendSchema)
+
+// key map（只針對 data 內的鍵，有遞迴效果）
+const tokenKeyMapInitial = {
+    access_token: 'accessToken',
+    refresh_token: 'refreshToken',
+} as const
+
+export type InitialTokenResponse = z.infer<typeof InitialTokenResponseFrontendSchema>
+
+export function initialToken() {
+    return http.request<InitialTokenResponse>({
+        url: `/authorization/initialToken`,
+        method: 'get',
+        codec: {
+            response: {
+                // 後端回來先以 backendSchema 驗證
+                backendSchema: InitialTokenResponseBackendSchema,
+                // 再映射鍵、最後以 frontendSchema 驗證
+                frontendSchema: InitialTokenResponseFrontendSchema,
+            },
+            dataKeyMap: tokenKeyMapInitial,
+        },
+    })
+}
+
 /** ---------- refreshToken ---------- */
 // data schema
 const RefreshTokenResponseDataFrontendSchema = z.object({
