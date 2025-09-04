@@ -15,6 +15,7 @@ type TabsContextValue = TabsState & {
     closeTab: (id: string) => void
     switchTab: (id: string) => void
     closeAll: () => void
+    closeOthers: (keepId: string) => void
 }
 
 type TabsContextProviderProps = {
@@ -40,7 +41,12 @@ type CloseAllAction = {
     type: 'CLOSE_ALL'
 }
 
-type Action = OpenTabAction | CloseTabAction | SwitchTabAction | CloseAllAction
+type CloseOthersAction = {
+    type: 'CLOSE_OTHERS'
+    payload: { keepId: string }
+}
+
+type Action = OpenTabAction | CloseTabAction | SwitchTabAction | CloseAllAction | CloseOthersAction
 
 /**
  * 選擇關閉標籤後的下一個啟用標籤 ID。
@@ -93,6 +99,7 @@ const tabsReducer = (state: TabsState, action: Action): TabsState => {
                 nextActive && newTabs.some((t) => t.id === nextActive)
                     ? nextActive
                     : (newTabs[0]?.id ?? null)
+
             return {
                 tabs: newTabs,
                 activeTabId: newActiveTabId,
@@ -113,6 +120,17 @@ const tabsReducer = (state: TabsState, action: Action): TabsState => {
                 activeTabId: null,
             }
         }
+        case 'CLOSE_OTHERS': {
+            const { keepId } = action.payload
+            const keepTab = state.tabs.find((t) => t.id === keepId)
+            if (!keepTab) {
+                return state
+            }
+            return {
+                tabs: [keepTab],
+                activeTabId: keepId,
+            }
+        }
         default:
             return state
     }
@@ -130,6 +148,7 @@ const TabsContextProvider = ({ children }: TabsContextProviderProps) => {
         closeTab: (id) => dispatch({ type: 'CLOSE_TAB', payload: { id } }),
         switchTab: (id) => dispatch({ type: 'SWITCH_TAB', payload: { id } }),
         closeAll: () => dispatch({ type: 'CLOSE_ALL' }),
+        closeOthers: (keepId) => dispatch({ type: 'CLOSE_OTHERS', payload: { keepId } }),
     }
 
     return <TabsContext.Provider value={tabCtx}>{children}</TabsContext.Provider>

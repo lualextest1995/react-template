@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useMemo } from 'react'
-import { useOutlet, useLocation } from 'react-router-dom'
-import { useRouteStore } from '@/stores/route'
-import { useKeepAliveStore } from '@/stores/keepAlive'
-import { useTabsStore } from '@/stores/tabs'
+import type React from 'react'
+import { useEffect, useMemo } from 'react'
+import { useLocation, useOutlet } from 'react-router-dom'
+import { useKeepAliveContext } from '@/hooks/useKeepAliveContext'
+import { useTabContext } from '@/hooks/useTabContext'
+import { useRouteStore } from '@/stores/routes'
 
 interface KeepAliveOutletProps {
     className?: string
@@ -13,76 +14,57 @@ export const KeepAliveOutlet: React.FC<KeepAliveOutletProps> = ({ className }) =
     const location = useLocation()
 
     const { match: matchRoute } = useRouteStore()
-    const { cache, set: setCacheElement, has: hasCache, getCachedRouteIds } = useKeepAliveStore()
-    const { activeId, getActiveTab } = useTabsStore()
+    const { tabs, activeTabId } = useTabContext()
+    const { caches, setCaches, hasCache, getCacheIds } = useKeepAliveContext()
 
-    // 使用 ref 來追蹤已經快取的路由
-    const cachedRoutesRef = useRef<Set<string>>(new Set())
-    const lastCachedPathRef = useRef<string>('')
-
-    // 使用 useMemo 來穩定 currentRouteId 的計算
-    const currentRouteId = useMemo(() => {
-        const currentRoute = matchRoute(location.pathname)
-        return currentRoute?.id || null
+    // 計算當前路由信息
+    const currentRoute = useMemo(() => {
+        return matchRoute(location.pathname)
     }, [matchRoute, location.pathname])
 
-    // 生成當前路徑的唯一標識
-    const currentPathKey = useMemo(() => {
-        return location.pathname + location.search
-    }, [location.pathname, location.search])
+    // 當前活躍的 Tab
+    const activeTab = useMemo(() => {
+        return tabs.find((tab) => tab.id === activeTabId)
+    }, [tabs, activeTabId])
 
+    // 快取當前組件（只緩存 keepAlive 為 true 的路由）
     useEffect(() => {
-        // 只有在路徑真正改變且需要快取時才執行
-        if (currentPathKey === lastCachedPathRef.current) {
-            return
+        if (outlet && currentRoute?.keepAlive && !hasCache(currentRoute.id)) {
+            console.log(`[KeepAlive] 快取組件: ${currentRoute.id}`)
+            setCaches(currentRoute.id, outlet)
         }
+    }, [outlet, currentRoute, hasCache, setCaches])
 
-        if (outlet && currentRouteId && !hasCache(currentRouteId)) {
-            const activeTab = getActiveTab()
-
-            // 只有當該 routeId 對應的 tab 是活躍的時候才快取
-            if (
-                activeTab &&
-                activeTab.id === currentRouteId &&
-                !cachedRoutesRef.current.has(currentRouteId)
-            ) {
-                setCacheElement(currentRouteId, outlet)
-                cachedRoutesRef.current.add(currentRouteId)
-                lastCachedPathRef.current = currentPathKey
-            }
-        }
-    }, [currentRouteId, currentPathKey, hasCache, getActiveTab, setCacheElement, outlet])
-
-    // 清理已經不存在的 tabs 對應的快取記錄
-    useEffect(() => {
-        const currentCachedIds = getCachedRouteIds()
-        const validTabIds = new Set(
-            Array.from(cachedRoutesRef.current).filter((id) => currentCachedIds.includes(id))
-        )
-        cachedRoutesRef.current = validTabIds
-    }, [getCachedRouteIds])
-
-    // 使用 useMemo 優化 renderContent
+    // 渲染邏輯
     const renderContent = useMemo(() => {
-        // 如果沒有活躍的 tab，渲染當前 outlet
-        if (!activeId) {
+        console.log(
+            `[KeepAlive] 渲染邏輯 - activeTab: ${activeTab?.id}, currentRoute: ${currentRoute?.id}, keepAlive: ${currentRoute?.keepAlive}`
+        )
+
+        // 如果當前路由不需要 keepAlive，直接渲染 outlet
+        if (!currentRoute?.keepAlive) {
+            console.log(`[KeepAlive] 當前路由不需要緩存，直接渲染 outlet`)
             return outlet
         }
 
-        const activeTab = getActiveTab()
+        // 如果沒有活躍的 Tab，直接渲染當前 outlet
         if (!activeTab) {
+            console.log(`[KeepAlive] 沒有活躍 Tab，直接渲染 outlet`)
             return outlet
         }
 
-        // 獲取所有需要渲染的快取元素
-        const cachedRouteIds = getCachedRouteIds()
+        // 獲取所有快取的組件
+        const cachedRouteIds = getCacheIds()
+        console.log(`[KeepAlive] 已快取的路由: ${cachedRouteIds.join(', ')}`)
 
         return (
             <div className="relative w-full h-full">
                 {/* 渲染所有快取的元素 */}
                 {cachedRouteIds.map((routeId) => {
-                    const cachedElement = cache[routeId]
-                    const isActive = routeId === activeId
+                    const cachedElement = caches[routeId]
+                    const isActive = routeId === activeTab.id
+
+                    console.log(`[KeepAlive] 渲染快取組件: ${routeId}, 是否活躍: ${isActive}`)
 
                     return (
                         <div
@@ -98,13 +80,13 @@ export const KeepAliveOutlet: React.FC<KeepAliveOutletProps> = ({ className }) =
                     )
                 })}
 
-                {/* 如果當前 routeId 沒有快取，直接顯示 outlet */}
-                {currentRouteId && !hasCache(currentRouteId) && currentRouteId === activeId && (
+                {/* 如果當前活躍的 Tab 沒有快取，直接顯示 outlet */}
+                {activeTab && !hasCache(activeTab.id) && (
                     <div style={{ width: '100%', height: '100%' }}>{outlet}</div>
                 )}
             </div>
         )
-    }, [activeId, getActiveTab, getCachedRouteIds, cache, currentRouteId, hasCache, outlet])
+    }, [activeTab, currentRoute, outlet, caches, getCacheIds, hasCache])
 
     return <div className={className}>{renderContent}</div>
 }

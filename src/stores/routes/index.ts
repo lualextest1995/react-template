@@ -1,8 +1,7 @@
 import type React from 'react'
 import { create } from 'zustand'
-import AppLayout from '@/layout/AppLayout'
-import Layout1 from '@/layout/LoginLayout'
-import Layout from '@/layout/TabsLayout'
+import AppLayout from '@/layouts/AppLayout'
+import LoginLayout from '@/layouts/LoginLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -17,8 +16,9 @@ export interface RouteConfig {
     title?: string
     layout?: React.ComponentType
     component: React.ComponentType
-    loader?: () => any
-    meta?: Record<string, any>
+    loader?: () => Promise<unknown> | unknown
+    meta?: Record<string, unknown>
+    keepAlive?: boolean // 是否需要 keep alive
 }
 
 interface RouteStore {
@@ -27,6 +27,7 @@ interface RouteStore {
     removeRoute: (id: string) => void
     match: (pathname: string) => RouteConfig | null
     getRouteById: (id: string) => RouteConfig | null
+    updateRoute: (id: string, updates: Partial<RouteConfig>) => void
 }
 
 // 預設路由配置
@@ -38,6 +39,7 @@ const defaultRoutes: RouteConfig[] = [
         layout: AppLayout,
         component: HomePage,
         loader: requireAuth,
+        keepAlive: false, // 首頁不需要 tab 和緩存
         meta: { icon: 'home' },
     },
     {
@@ -47,6 +49,7 @@ const defaultRoutes: RouteConfig[] = [
         layout: AppLayout,
         component: DashboardPage,
         loader: requireAuth,
+        keepAlive: true,
         meta: { icon: 'dashboard' },
     },
     {
@@ -56,6 +59,7 @@ const defaultRoutes: RouteConfig[] = [
         layout: AppLayout,
         component: UsersPage,
         loader: requireAuth,
+        keepAlive: true,
         meta: { icon: 'users' },
     },
     {
@@ -65,21 +69,25 @@ const defaultRoutes: RouteConfig[] = [
         layout: AppLayout,
         component: SettingsPage,
         loader: requireAuth,
+        keepAlive: true,
         meta: { icon: 'settings' },
     },
     {
         id: 'login',
         path: '/login',
         title: '登入',
-        layout: Layout1,
+        layout: LoginLayout,
         component: LoginPage,
         loader: requireGuest,
+        keepAlive: false,
         meta: { icon: 'login' },
     },
     {
         id: 'notfound',
         path: '*',
+        title: '404',
         component: NotFoundPage,
+        keepAlive: false,
     },
 ]
 
@@ -87,57 +95,35 @@ export const useRouteStore = create<RouteStore>((set, get) => ({
     routes: defaultRoutes,
 
     addRoute: (route) => {
-        set((state) => ({
-            routes: [...state.routes, route],
-        }))
+        set((state) => {
+            // 檢查是否已存在相同 id 的路由
+            const existingIndex = state.routes.findIndex((r) => r.id === route.id)
+            if (existingIndex !== -1) {
+                // 更新現有路由
+                const newRoutes = [...state.routes]
+                newRoutes.splice(existingIndex, 1, route)
+                return { routes: newRoutes }
+            }
+            // 添加新路由
+            return { routes: [...state.routes, route] }
+        })
     },
 
     removeRoute: (id: string) => {
-        console.log(`準備移除路由: ${id}`)
-
-        // 先通知 tabs store 處理被移除的路由（先跳轉）
-        const shouldWaitForNavigation = new Promise<void>(async (resolve) => {
-            try {
-                const { useTabsStore } = await import('../tabs')
-                const tabsStore = useTabsStore.getState()
-                console.log(`通知 tabs store 處理被移除的路由: ${id}`)
-
-                // 檢查是否需要導航
-                const needsNavigation = tabsStore.handleRouteRemoved(id)
-
-                if (needsNavigation) {
-                    // 如果需要導航，等待一小段時間確保導航完成
-                    setTimeout(() => {
-                        console.log(`導航完成，現在可以安全移除路由: ${id}`)
-                        resolve()
-                    }, 100)
-                } else {
-                    // 不需要導航，可以立即繼續
-                    resolve()
-                }
-            } catch (error) {
-                console.warn('Failed to notify tabs store about route removal:', error)
-                resolve()
-            }
-        })
-
-        // 等待導航完成後再移除路由
-        shouldWaitForNavigation.then(() => {
-            set((state) => ({
-                routes: state.routes.filter((route) => route.id !== id),
-            }))
-
-            console.log(`路由已移除: ${id}`)
-
-            // 清理 keep-alive 快取
-            import('../keepAlive').then(({ useKeepAliveStore }) => {
-                useKeepAliveStore.getState().remove(id)
-                console.log(`keep-alive 快取已清理: ${id}`)
-            })
-        })
+        set((state) => ({
+            routes: state.routes.filter((route) => route.id !== id),
+        }))
     },
 
-    match: (pathname) => {
+    updateRoute: (id: string, updates: Partial<RouteConfig>) => {
+        set((state) => ({
+            routes: state.routes.map((route) =>
+                route.id === id ? { ...route, ...updates } : route
+            ),
+        }))
+    },
+
+    match: (pathname: string) => {
         const { routes } = get()
 
         // 精確匹配
@@ -148,22 +134,29 @@ export const useRouteStore = create<RouteStore>((set, get) => ({
 
         // 動態路由匹配（例如 /users/:id）
         for (const route of routes) {
-            const routePattern = route.path.replace(/:[^/]+/g, '[^/]+')
-            const regex = new RegExp(`^${routePattern}$`)
-            if (regex.test(pathname)) {
-                return route
+            if (route.path.includes(':')) {
+                const routePattern = route.path.replace(/:[^/]+/g, '[^/]+')
+                const regex = new RegExp(`^${routePattern}$`)
+                if (regex.test(pathname)) {
+                    return route
+                }
             }
         }
 
         // 路徑前綴匹配（例如 /users/123 匹配 /users）
         const prefixMatch = routes.find((route) => {
-            if (route.path === '/') {
+            if (route.path === '/' || route.path === '*') {
                 return false
             }
-            return pathname.startsWith(route.path)
+            return pathname.startsWith(`${route.path}/`)
         })
 
-        return prefixMatch || null
+        if (prefixMatch) {
+            return prefixMatch
+        }
+
+        // 最後檢查 404 路由
+        return routes.find((route) => route.path === '*') || null
     },
 
     getRouteById: (id) => {
